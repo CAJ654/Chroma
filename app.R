@@ -86,6 +86,7 @@ color_card_ui <- function(hex, name = NULL, rgb_vals = NULL, index = NULL) {
 
 ui <- fluidPage(
   tags$head(
+    tags$meta(name = "viewport", content = "width=device-width, initial-scale=1"),
     tags$style(HTML("
       @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
@@ -533,6 +534,83 @@ ui <- fluidPage(
         box-shadow: 0 4px 15px rgba(167,139,250,0.4);
         pointer-events: none;
       }
+
+      .controls-toggle {
+        display: none;
+        width: 100%;
+        background: #1e1e30;
+        border: 1px solid #2a2a3e;
+        border-radius: 10px;
+        color: #a78bfa;
+        font-family: 'Inter', sans-serif;
+        font-size: 13px;
+        font-weight: 600;
+        padding: 12px 16px;
+        cursor: pointer;
+        text-align: left;
+        margin-bottom: 2px;
+        transition: background 0.2s;
+      }
+
+      .controls-toggle:hover { background: #2a2a3e; }
+
+      /* ── Mobile ── */
+      @media (max-width: 700px) {
+        .app-header { padding: 16px; }
+        .app-header h1 { font-size: 20px; }
+        .app-header p { font-size: 12px; }
+
+        .tab-bar { padding: 0 12px; }
+        .tab-btn { padding: 12px 14px; font-size: 12px; }
+
+        .main-layout { flex-direction: column; min-height: unset; }
+
+        .sidebar-panel {
+          width: 100%;
+          min-width: unset;
+          border-right: none;
+          border-bottom: 1px solid #2a2a3e;
+          padding: 14px 14px 16px;
+          gap: 14px;
+        }
+
+        .controls-toggle { display: flex; align-items: center; justify-content: space-between; }
+
+        .controls-body { overflow: hidden; transition: max-height 0.3s ease; }
+        .controls-body.collapsed { max-height: 0 !important; }
+
+        .content-panel { padding: 18px 14px; }
+
+        /* 2-column color cards on mobile */
+        .palette-grid, .loading-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 10px;
+        }
+
+        .color-card, .skeleton-card {
+          min-width: unset;
+          max-width: unset;
+          flex: unset;
+        }
+
+        .color-swatch, .skeleton-swatch { height: 110px; }
+
+        /* Bigger touch targets */
+        .count-btn { width: 42px; height: 42px; font-size: 20px; }
+        .generate-btn { padding: 14px 16px; font-size: 14px; }
+        input[type='color'] { width: 52px; height: 46px; }
+        .hex-input, .form-select, .form-input { font-size: 14px; padding: 11px 12px; }
+
+        .hex-strip { gap: 8px; margin-top: 16px; padding-top: 16px; }
+        .hex-chip { padding: 8px 14px; font-size: 12px; }
+
+        .section-title { font-size: 15px; margin-bottom: 14px; }
+
+        .lock-swatch { width: 36px; height: 36px; }
+        .lock-hex { font-size: 13px; padding: 8px 10px; }
+        .lock-toggle { width: 34px; height: 34px; font-size: 15px; }
+      }
     "))
   ),
 
@@ -550,6 +628,16 @@ ui <- fluidPage(
 
   div(class = "main-layout",
     div(class = "sidebar-panel",
+
+      tags$button(
+        class = "controls-toggle",
+        id = "controlsToggle",
+        onclick = "toggleControls()",
+        tags$span(id = "controlsToggleLabel", "\u2699\ufe0f Controls"),
+        tags$span(id = "controlsToggleArrow", "\u25be")
+      ),
+
+      div(id = "controlsBody", class = "controls-body",
 
       # --- Scheme Tab Controls ---
       div(id = "scheme-controls",
@@ -626,6 +714,8 @@ ui <- fluidPage(
           class = "generate-btn",
           style = "width:100%;margin-top:4px;")
       )
+
+      ) # end controlsBody
     ),
 
     div(class = "content-panel",
@@ -642,12 +732,36 @@ ui <- fluidPage(
     var lockedSlots = [false, false, false, false, false];
     var activeTab = 'scheme';
 
+    var controlsOpen = true;
+
+    function setControlsHeight() {
+      var body = document.getElementById('controlsBody');
+      if (!body) return;
+      if (controlsOpen) {
+        body.style.maxHeight = body.scrollHeight + 'px';
+        body.classList.remove('collapsed');
+      } else {
+        body.style.maxHeight = '0px';
+        body.classList.add('collapsed');
+      }
+    }
+
+    function toggleControls() {
+      controlsOpen = !controlsOpen;
+      setControlsHeight();
+      var arrow = document.getElementById('controlsToggleArrow');
+      if (arrow) arrow.textContent = controlsOpen ? '\u25be' : '\u25b8';
+    }
+
     function switchTab(tab) {
       activeTab = tab;
       document.getElementById('scheme-controls').style.display = tab === 'scheme' ? '' : 'none';
       document.getElementById('ai-controls').style.display = tab === 'ai' ? '' : 'none';
       document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
       document.getElementById('tab-' + tab).classList.add('active');
+      if (controlsOpen) {
+        setTimeout(setControlsHeight, 10);
+      }
     }
 
     function adjustCount(delta) {
@@ -754,6 +868,10 @@ ui <- fluidPage(
     // Initialize
     Shiny.setInputValue('baseHex', '#7C3AED');
     Shiny.setInputValue('colorCount', 5);
+    setTimeout(function() {
+      var body = document.getElementById('controlsBody');
+      if (body) body.style.maxHeight = body.scrollHeight + 'px';
+    }, 100);
   "))
 )
 
