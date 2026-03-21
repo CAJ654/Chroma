@@ -15,42 +15,6 @@ fetch_scheme <- function(hex, mode, count) {
   }, error = function(e) NULL)
 }
 
-fetch_color_info <- function(hex) {
-  hex_clean <- gsub("^#", "", hex)
-  url <- sprintf("https://www.thecolorapi.com/id?hex=%s&format=json", hex_clean)
-  h <- new_handle()
-  handle_setopt(h, useragent = "R-Shiny/4.3", timeout = 10L)
-  tryCatch({
-    resp <- curl_fetch_memory(url, handle = h)
-    if (resp$status_code != 200) return(NULL)
-    fromJSON(rawToChar(resp$content))
-  }, error = function(e) NULL)
-}
-
-fetch_ai_palette <- function(model = "default", locked = list()) {
-  input_list <- lapply(1:5, function(i) {
-    if (i <= length(locked) && !is.null(locked[[i]])) {
-      hex <- gsub("^#", "", locked[[i]])
-      r <- strtoi(substr(hex, 1, 2), 16L)
-      g <- strtoi(substr(hex, 3, 4), 16L)
-      b <- strtoi(substr(hex, 5, 6), 16L)
-      list(r, g, b)
-    } else {
-      "N"
-    }
-  })
-  body <- toJSON(list(model = model, input = input_list), auto_unbox = TRUE)
-  h <- new_handle()
-  handle_setopt(h, post = TRUE, postfields = body, useragent = "R-Shiny/4.3", timeout = 10L)
-  handle_setheaders(h, "Content-Type" = "application/json")
-  tryCatch({
-    resp <- curl_fetch_memory("http://colormind.io/api/", handle = h)
-    if (resp$status_code != 200) return(NULL)
-    parsed <- fromJSON(rawToChar(resp$content))
-    parsed$result
-  }, error = function(e) NULL)
-}
-
 rgb_to_hex <- function(r, g, b) {
   sprintf("#%02X%02X%02X", as.integer(r), as.integer(g), as.integer(b))
 }
@@ -64,10 +28,8 @@ text_on_color <- function(hex) {
   if (lum > 0.55) "#1a1a2e" else "#ffffff"
 }
 
-color_card_ui <- function(hex, name = NULL, rgb_vals = NULL, index = NULL) {
-  fg <- text_on_color(hex)
+color_card_ui <- function(hex, name = NULL, rgb_vals = NULL) {
   name_label <- if (!is.null(name) && nchar(name) > 0) name else hex
-
   tags$div(
     class = "color-card",
     `data-hex` = hex,
@@ -123,38 +85,9 @@ ui <- fluidPage(
         font-size: 13px;
       }
 
-      .tab-bar {
-        display: flex;
-        gap: 4px;
-        padding: 0 40px;
-        background: #13131f;
-        border-bottom: 1px solid #2a2a3e;
-      }
-
-      .tab-btn {
-        padding: 14px 20px;
-        font-family: 'Inter', sans-serif;
-        font-size: 13px;
-        font-weight: 500;
-        color: #8888aa;
-        background: none;
-        border: none;
-        border-bottom: 2px solid transparent;
-        cursor: pointer;
-        transition: all 0.2s;
-        margin-bottom: -1px;
-      }
-
-      .tab-btn:hover { color: #e8e8f0; }
-
-      .tab-btn.active {
-        color: #a78bfa;
-        border-bottom-color: #a78bfa;
-      }
-
       .main-layout {
         display: flex;
-        min-height: calc(100vh - 130px);
+        min-height: calc(100vh - 85px);
       }
 
       .sidebar-panel {
@@ -199,7 +132,7 @@ ui <- fluidPage(
 
       input[type='color']:hover { border-color: #a78bfa; }
 
-      .hex-input, .form-select, .form-input {
+      .hex-input, .form-select {
         background: #1e1e30;
         border: 2px solid #2a2a3e;
         border-radius: 10px;
@@ -212,9 +145,7 @@ ui <- fluidPage(
         transition: border-color 0.2s;
       }
 
-      .hex-input:focus, .form-select:focus, .form-input:focus {
-        border-color: #a78bfa;
-      }
+      .hex-input:focus, .form-select:focus { border-color: #a78bfa; }
 
       .form-select {
         appearance: none;
@@ -354,11 +285,7 @@ ui <- fluidPage(
         margin-bottom: 3px;
       }
 
-      .color-rgb {
-        font-size: 11px;
-        color: #6666aa;
-        font-family: monospace;
-      }
+      .color-rgb { font-size: 11px; color: #6666aa; font-family: monospace; }
 
       .hex-strip {
         display: flex;
@@ -442,83 +369,6 @@ ui <- fluidPage(
         100% { background-position: -200% 0; }
       }
 
-      .divider {
-        height: 1px;
-        background: #2a2a3e;
-        margin: 4px 0;
-      }
-
-      .lock-row {
-        display: flex;
-        gap: 6px;
-        align-items: center;
-      }
-
-      .lock-swatch {
-        width: 32px;
-        height: 32px;
-        border-radius: 8px;
-        border: 2px solid #2a2a3e;
-        flex-shrink: 0;
-        cursor: pointer;
-        transition: border-color 0.2s;
-      }
-
-      .lock-swatch:hover { border-color: #a78bfa; }
-
-      .lock-hex {
-        flex: 1;
-        background: #1e1e30;
-        border: 2px solid #2a2a3e;
-        border-radius: 8px;
-        color: #a78bfa;
-        font-family: monospace;
-        font-size: 12px;
-        padding: 6px 10px;
-        outline: none;
-        font-weight: 500;
-        transition: border-color 0.2s;
-      }
-
-      .lock-hex:focus { border-color: #a78bfa; }
-
-      .lock-toggle {
-        width: 28px;
-        height: 28px;
-        border-radius: 6px;
-        border: 2px solid #2a2a3e;
-        background: #1e1e30;
-        color: #8888aa;
-        font-size: 13px;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: all 0.15s;
-        flex-shrink: 0;
-        padding: 0;
-      }
-
-      .lock-toggle.locked {
-        border-color: #a78bfa;
-        color: #a78bfa;
-        background: rgba(167,139,250,0.1);
-      }
-
-      .info-pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-        background: #1e1e30;
-        border: 1px solid #2a2a3e;
-        border-radius: 20px;
-        padding: 4px 10px;
-        font-size: 11px;
-        color: #8888aa;
-      }
-
-      .info-pill span { color: #a78bfa; font-weight: 600; }
-
       .toast {
         position: fixed;
         bottom: 24px;
@@ -560,9 +410,6 @@ ui <- fluidPage(
         .app-header h1 { font-size: 20px; }
         .app-header p { font-size: 12px; }
 
-        .tab-bar { padding: 0 12px; }
-        .tab-btn { padding: 12px 14px; font-size: 12px; }
-
         .main-layout { flex-direction: column; min-height: unset; }
 
         .sidebar-panel {
@@ -581,7 +428,6 @@ ui <- fluidPage(
 
         .content-panel { padding: 18px 14px; }
 
-        /* 2-column color cards on mobile */
         .palette-grid, .loading-grid {
           display: grid;
           grid-template-columns: 1fr 1fr;
@@ -596,34 +442,22 @@ ui <- fluidPage(
 
         .color-swatch, .skeleton-swatch { height: 110px; }
 
-        /* Bigger touch targets */
         .count-btn { width: 42px; height: 42px; font-size: 20px; }
         .generate-btn { padding: 14px 16px; font-size: 14px; }
         input[type='color'] { width: 52px; height: 46px; }
-        .hex-input, .form-select, .form-input { font-size: 14px; padding: 11px 12px; }
+        .hex-input, .form-select { font-size: 14px; padding: 11px 12px; }
 
         .hex-strip { gap: 8px; margin-top: 16px; padding-top: 16px; }
         .hex-chip { padding: 8px 14px; font-size: 12px; }
 
         .section-title { font-size: 15px; margin-bottom: 14px; }
-
-        .lock-swatch { width: 36px; height: 36px; }
-        .lock-hex { font-size: 13px; padding: 8px 10px; }
-        .lock-toggle { width: 34px; height: 34px; font-size: 15px; }
       }
     "))
   ),
 
   div(class = "app-header",
     h1("Chroma"),
-    p("Powered by thecolorapi.com \u00b7 colormind.io \u00b7 R + Shiny")
-  ),
-
-  div(class = "tab-bar",
-    tags$button(id = "tab-scheme", class = "tab-btn active",
-      onclick = "switchTab('scheme')", "\U0001F3A8 Color Scheme"),
-    tags$button(id = "tab-ai", class = "tab-btn",
-      onclick = "switchTab('ai')", "\u2728 AI Palette")
+    p("Powered by thecolorapi.com \u00b7 R + Shiny")
   ),
 
   div(class = "main-layout",
@@ -633,14 +467,12 @@ ui <- fluidPage(
         class = "controls-toggle",
         id = "controlsToggle",
         onclick = "toggleControls()",
-        tags$span(id = "controlsToggleLabel", "\u2699\ufe0f Controls"),
-        tags$span(id = "controlsToggleArrow", "\u25be")
+        tags$span("\u2699\ufe0f Controls"),
+        tags$span(id = "controlsArrow", "\u25be")
       ),
 
       div(id = "controlsBody", class = "controls-body",
 
-      # --- Scheme Tab Controls ---
-      div(id = "scheme-controls",
         div(class = "control-group",
           div(class = "control-label", "Base Color"),
           div(class = "color-input-row",
@@ -651,6 +483,7 @@ ui <- fluidPage(
           div(id = "basePreview", class = "color-preview",
             style = "background:#7c3aed;")
         ),
+
         div(class = "control-group",
           div(class = "control-label", "Scheme Type"),
           tags$select(id = "schemeMode", class = "form-select",
@@ -664,6 +497,7 @@ ui <- fluidPage(
             tags$option(value = "monochrome-light", "Monochrome Light")
           )
         ),
+
         div(class = "control-group",
           div(class = "control-label", "Number of Colors"),
           div(class = "count-row",
@@ -672,56 +506,16 @@ ui <- fluidPage(
             tags$button(class = "count-btn", onclick = "adjustCount(1)", "+")
           )
         ),
-        actionButton("generateScheme", "Generate Scheme",
-          class = "generate-btn",
-          style = "width:100%;margin-top:4px;")
-      ),
 
-      # --- AI Tab Controls ---
-      div(id = "ai-controls", style = "display:none;",
-        div(class = "control-group",
-          div(class = "control-label", "Palette Model"),
-          tags$select(id = "aiModel", class = "form-select",
-            tags$option(value = "default", "Default"),
-            tags$option(value = "ui", "UI Design"),
-            tags$option(value = "material", "Material"),
-            tags$option(value = "japanese-prints", "Japanese Prints"),
-            tags$option(value = "flower-photography", "Flower Photography"),
-            tags$option(value = "interior-design", "Interior Design"),
-            tags$option(value = "french-Art-Deco", "Art Deco")
-          )
-        ),
-        div(class = "control-group",
-          div(class = "control-label", "Lock Colors (optional)"),
-          div(class = "control-label",
-            style = "text-transform:none;letter-spacing:0;font-size:11px;color:#555577;margin-top:-4px;",
-            "Enter hex values to anchor, leave blank to generate"),
-          lapply(1:5, function(i) {
-            div(class = "lock-row", style = "margin-bottom:6px;",
-              div(id = paste0("lockSwatch", i), class = "lock-swatch",
-                style = "background:#1e1e30;"),
-              tags$input(type = "text", id = paste0("lockHex", i),
-                class = "lock-hex", placeholder = paste0("Color ", i),
-                maxlength = "7",
-                oninput = paste0("updateLockSwatch(", i, ")")),
-              tags$button(class = "lock-toggle", id = paste0("lockBtn", i),
-                title = "Toggle lock", "\U0001F512",
-                onclick = paste0("toggleLock(", i, ")"))
-            )
-          })
-        ),
-        actionButton("generateAI", "Generate AI Palette",
+        actionButton("generateScheme", "Generate Palette",
           class = "generate-btn",
           style = "width:100%;margin-top:4px;")
-      )
 
       ) # end controlsBody
     ),
 
     div(class = "content-panel",
-      div(class = "section-title",
-        uiOutput("paletteTitleUI")
-      ),
+      div(class = "section-title", uiOutput("paletteTitleUI")),
       uiOutput("paletteUI"),
       uiOutput("hexStripUI")
     )
@@ -729,9 +523,6 @@ ui <- fluidPage(
 
   tags$script(HTML("
     var currentCount = 5;
-    var lockedSlots = [false, false, false, false, false];
-    var activeTab = 'scheme';
-
     var controlsOpen = true;
 
     function setControlsHeight() {
@@ -749,19 +540,8 @@ ui <- fluidPage(
     function toggleControls() {
       controlsOpen = !controlsOpen;
       setControlsHeight();
-      var arrow = document.getElementById('controlsToggleArrow');
+      var arrow = document.getElementById('controlsArrow');
       if (arrow) arrow.textContent = controlsOpen ? '\u25be' : '\u25b8';
-    }
-
-    function switchTab(tab) {
-      activeTab = tab;
-      document.getElementById('scheme-controls').style.display = tab === 'scheme' ? '' : 'none';
-      document.getElementById('ai-controls').style.display = tab === 'ai' ? '' : 'none';
-      document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
-      document.getElementById('tab-' + tab).classList.add('active');
-      if (controlsOpen) {
-        setTimeout(setControlsHeight, 10);
-      }
     }
 
     function adjustCount(delta) {
@@ -787,40 +567,6 @@ ui <- fluidPage(
       }
     });
 
-    function updateLockSwatch(i) {
-      var val = document.getElementById('lockHex' + i).value.trim();
-      var hex = val.startsWith('#') ? val : '#' + val;
-      var sw = document.getElementById('lockSwatch' + i);
-      if (/^#[0-9A-Fa-f]{6}$/.test(hex)) {
-        sw.style.background = hex;
-        sw.style.borderColor = hex;
-      } else {
-        sw.style.background = '#1e1e30';
-        sw.style.borderColor = '#2a2a3e';
-      }
-    }
-
-    function toggleLock(i) {
-      lockedSlots[i-1] = !lockedSlots[i-1];
-      var btn = document.getElementById('lockBtn' + i);
-      btn.classList.toggle('locked', lockedSlots[i-1]);
-      btn.title = lockedSlots[i-1] ? 'Unlock' : 'Lock';
-    }
-
-    function getLocked() {
-      var locked = [];
-      for (var i = 1; i <= 5; i++) {
-        if (lockedSlots[i-1]) {
-          var val = document.getElementById('lockHex' + i).value.trim();
-          var hex = val.startsWith('#') ? val : '#' + val;
-          locked.push(/^#[0-9A-Fa-f]{6}$/.test(hex) ? hex : null);
-        } else {
-          locked.push(null);
-        }
-      }
-      return locked;
-    }
-
     Shiny.addCustomMessageHandler('setLoading', function(n) {
       var html = '<div class=\"loading-grid\">';
       for (var i = 0; i < n; i++) {
@@ -834,11 +580,6 @@ ui <- fluidPage(
       html += '</div>';
       document.getElementById('paletteUI').innerHTML = html;
       document.getElementById('hexStripUI').innerHTML = '';
-    });
-
-    Shiny.addCustomMessageHandler('submitAILocked', function(msg) {
-      Shiny.setInputValue('lockedColors', getLocked(), {priority: 'event'});
-      Shiny.setInputValue('aiModelSel', document.getElementById('aiModel').value, {priority: 'event'});
     });
 
     function copyToClipboard(hex, el) {
@@ -865,7 +606,6 @@ ui <- fluidPage(
       }, 1800);
     }
 
-    // Initialize
     Shiny.setInputValue('baseHex', '#7C3AED');
     Shiny.setInputValue('colorCount', 5);
     setTimeout(function() {
@@ -878,25 +618,21 @@ ui <- fluidPage(
 server <- function(input, output, session) {
 
   palette_data <- reactiveVal(NULL)
-  is_loading  <- reactiveVal(FALSE)
-  err_msg     <- reactiveVal(NULL)
-  active_mode <- reactiveVal("scheme")
+  is_loading   <- reactiveVal(FALSE)
+  err_msg      <- reactiveVal(NULL)
 
-  # --- Generate Color Scheme ---
   observeEvent(input$generateScheme, {
-    hex <- input$baseHex
+    hex   <- input$baseHex
     if (is.null(hex) || !grepl("^#[0-9A-Fa-f]{6}$", hex)) hex <- "#7C3AED"
     mode  <- input$schemeMode
     count <- if (is.null(input$colorCount)) 5L else as.integer(input$colorCount)
 
-    active_mode("scheme")
     is_loading(TRUE)
     err_msg(NULL)
     palette_data(NULL)
     session$sendCustomMessage("setLoading", count)
 
     data <- fetch_scheme(hex, mode, count)
-
     is_loading(FALSE)
 
     if (is.null(data)) {
@@ -914,102 +650,58 @@ server <- function(input, output, session) {
         b    = colors$rgb$b[i]
       )
     })
-    palette_data(list(mode = "scheme", colors = result, scheme_mode = mode,
-                      base_hex = hex))
+    palette_data(list(colors = result, scheme_mode = mode, base_hex = hex))
   })
 
-  # --- Generate AI Palette ---
-  observeEvent(input$generateAI, {
-    session$sendCustomMessage("submitAILocked", list())
-  })
-
-  observeEvent(input$lockedColors, {
-    active_mode("ai")
-    is_loading(TRUE)
-    err_msg(NULL)
-    palette_data(NULL)
-    session$sendCustomMessage("setLoading", 5)
-
-    model  <- if (!is.null(input$aiModelSel)) input$aiModelSel else "default"
-    locked <- input$lockedColors
-
-    result_rgb <- fetch_ai_palette(model = model, locked = locked)
-
-    is_loading(FALSE)
-
-    if (is.null(result_rgb)) {
-      err_msg("Could not reach the Colormind AI API. Please try again.")
-      return()
-    }
-
-    colors <- lapply(result_rgb, function(rgb) {
-      list(hex = rgb_to_hex(rgb[1], rgb[2], rgb[3]),
-           name = NULL, r = rgb[1], g = rgb[2], b = rgb[3])
-    })
-
-    palette_data(list(mode = "ai", colors = colors, ai_model = model))
-  })
-
-  # --- Palette Title ---
   output$paletteTitleUI <- renderUI({
-    pd <- palette_data()
     if (is_loading()) {
-      return(tagList(
-        "Generating palette",
-        tags$span(class = "badge", "loading...")
-      ))
+      return(tagList("Palette", tags$span(class = "badge", "loading...")))
     }
     if (!is.null(err_msg())) {
       return(tagList("Palette", tags$span(class = "badge", "error")))
     }
+    pd <- palette_data()
     if (is.null(pd)) {
       return(tagList("Palette", tags$span(class = "badge", "ready")))
     }
-    n <- length(pd$colors)
-    label <- if (pd$mode == "scheme") pd$scheme_mode else paste("AI \u00b7", pd$ai_model)
     tagList(
       "Palette",
-      tags$span(class = "badge", paste(n, "colors \u00b7", label))
+      tags$span(class = "badge",
+        paste(length(pd$colors), "colors \u00b7", pd$scheme_mode))
     )
   })
 
-  # --- Palette Cards ---
   output$paletteUI <- renderUI({
     if (is_loading()) return(NULL)
-
-    if (!is.null(err_msg())) {
-      return(div(class = "error-box", err_msg()))
-    }
+    if (!is.null(err_msg())) return(div(class = "error-box", err_msg()))
 
     pd <- palette_data()
-
     if (is.null(pd)) {
       return(div(class = "empty-state",
         div(class = "empty-icon", "\U0001F3A8"),
         div(class = "empty-text", "Your palette will appear here"),
-        div(class = "empty-sub", "Choose a mode and click Generate")
+        div(class = "empty-sub", "Pick a color and click Generate Palette")
       ))
     }
 
-    cards <- lapply(pd$colors, function(c) {
-      color_card_ui(c$hex, c$name, c(c$r, c$g, c$b))
-    })
-
-    div(class = "palette-grid", cards)
+    div(class = "palette-grid",
+      lapply(pd$colors, function(c) {
+        color_card_ui(c$hex, c$name, c(c$r, c$g, c$b))
+      })
+    )
   })
 
-  # --- Hex Strip ---
   output$hexStripUI <- renderUI({
     pd <- palette_data()
     if (is.null(pd) || is_loading()) return(NULL)
 
-    chips <- lapply(pd$colors, function(c) {
-      tags$div(class = "hex-chip",
-        onclick = sprintf("copyToClipboard('%s', this)", c$hex),
-        c$hex)
-    })
-
-    div(class = "hex-strip", chips)
+    div(class = "hex-strip",
+      lapply(pd$colors, function(c) {
+        tags$div(class = "hex-chip",
+          onclick = sprintf("copyToClipboard('%s', this)", c$hex),
+          c$hex)
+      })
+    )
   })
 }
 
