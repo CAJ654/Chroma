@@ -1,0 +1,51 @@
+run = "R -s -f main.r"
+
+entrypoint = "main.r"
+
+hidden = [".Rprofile", "Rconfig.json", "Rconfig.lock.json"]
+
+[env]
+R_LIBS_USER = "$REPL_HOME/.config/R"
+
+[nix]
+channel = "stable-24_05"
+
+[packager]
+language = "rlang"
+
+[packager.features]
+packageSearch = true
+
+[gitHubImport]
+requiredFiles = [".replit", "replit.nix", ".Rprofile"]
+
+[agent]
+expertMode = true
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Start application"
+
+[[workflows.workflow]]
+name = "Start application"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "Rscript -e \"shiny::runApp('app.R', host='0.0.0.0', port=5000)\""
+waitForPort = 5000
+
+[workflows.workflow.metadata]
+outputType = "webview"
+
+[[ports]]
+localPort = 5000
+externalPort = 80
