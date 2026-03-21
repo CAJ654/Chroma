@@ -1,17 +1,15 @@
 library(shiny)
-library(curl)
+library(httr)
 library(jsonlite)
 
 fetch_scheme <- function(hex, mode, count) {
   hex_clean <- gsub("^#", "", hex)
   url <- sprintf("https://www.thecolorapi.com/scheme?hex=%s&mode=%s&count=%d&format=json",
                  hex_clean, mode, count)
-  h <- new_handle()
-  handle_setopt(h, useragent = "R-Shiny/4.3", timeout = 10L)
   tryCatch({
-    resp <- curl_fetch_memory(url, handle = h)
-    if (resp$status_code != 200) return(NULL)
-    fromJSON(rawToChar(resp$content))
+    resp <- httr::GET(url, httr::user_agent("R-Shiny/4.3"), httr::timeout(10))
+    if (httr::status_code(resp) != 200) return(NULL)
+    fromJSON(httr::content(resp, "text", encoding = "UTF-8"))
   }, error = function(e) NULL)
 }
 
@@ -452,7 +450,7 @@ ui <- fluidPage(
 
         .section-title { font-size: 15px; margin-bottom: 14px; }
       }
-    "))
+    ")))
   ),
 
   div(class = "app-header",
@@ -706,3 +704,7 @@ server <- function(input, output, session) {
 }
 
 shinyApp(ui = ui, server = server)
+
+if (Sys.getenv("EXPORT_SHINYLIVE") == "true") {
+  shinylive::export(".", "site")
+}
