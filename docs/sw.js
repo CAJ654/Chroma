@@ -1,1 +1,0 @@
-importScripts('https://shinylive.io/shinylive-0.1.0/serviceworker.js');
