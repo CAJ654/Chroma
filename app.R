@@ -615,7 +615,7 @@ ui <- fluidPage(
   ),
 
   div(class = "app-header",
-    h1("Color Palette Generator"),
+    h1("Chroma"),
     p("Powered by thecolorapi.com \u00b7 colormind.io \u00b7 R + Shiny")
   ),
 
