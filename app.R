@@ -1,17 +1,5 @@
 library(shiny)
-library(httr)
-library(jsonlite)
-
-fetch_scheme <- function(hex, mode, count) {
-  hex_clean <- gsub("^#", "", hex)
-  url <- sprintf("https://www.thecolorapi.com/scheme?hex=%s&mode=%s&count=%d&format=json",
-                 hex_clean, mode, count)
-  tryCatch({
-    resp <- httr::GET(url, httr::user_agent("R-Shiny/4.3"), httr::timeout(10))
-    if (httr::status_code(resp) != 200) return(NULL)
-    fromJSON(httr::content(resp, "text", encoding = "UTF-8"))
-  }, error = function(e) NULL)
-}
+# fetch_scheme is replaced by a javascript fetch call, triggered by a custom message handler.
 
 rgb_to_hex <- function(r, g, b) {
   sprintf("#%02X%02X%02X", as.integer(r), as.integer(g), as.integer(b))
@@ -450,7 +438,7 @@ ui <- fluidPage(
 
         .section-title { font-size: 15px; margin-bottom: 14px; }
       }
-    ")))
+    "))))
   ),
 
   div(class = "app-header",
@@ -565,6 +553,24 @@ ui <- fluidPage(
       }
     });
 
+    Shiny.addCustomMessageHandler('fetch-scheme', function(message) {
+      const { hex, mode, count } = message;
+      const url = `https://www.thecolorapi.com/scheme?hex=${hex.replace(/^#/, '')}&mode=${mode}&count=${count}&format=json`;
+      fetch(url)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          return response.json();
+        })
+        .then(data => {
+          Shiny.setInputValue('scheme_data', data, {priority: 'event'});
+        })
+        .catch(error => {
+          Shiny.setInputValue('scheme_error', error.message, {priority: 'event'});
+        });
+    });
+
     Shiny.addCustomMessageHandler('setLoading', function(n) {
       var html = '<div class=\"loading-grid\">';
       for (var i = 0; i < n; i++) {
@@ -630,9 +636,12 @@ server <- function(input, output, session) {
     palette_data(NULL)
     session$sendCustomMessage("setLoading", count)
 
-    data <- fetch_scheme(hex, mode, count)
-    is_loading(FALSE)
+    session$sendCustomMessage("fetch-scheme", list(hex = hex, mode = mode, count = count))
+  })
 
+  observeEvent(input$scheme_data, {
+    is_loading(FALSE)
+    data <- input$scheme_data
     if (is.null(data)) {
       err_msg("Could not reach the Color API. Please try again.")
       return()
@@ -648,7 +657,12 @@ server <- function(input, output, session) {
         b    = colors$rgb$b[i]
       )
     })
-    palette_data(list(colors = result, scheme_mode = mode, base_hex = hex))
+    palette_data(list(colors = result, scheme_mode = data$mode, base_hex = data$seed$hex$value))
+  })
+
+  observeEvent(input$scheme_error, {
+    is_loading(FALSE)
+    err_msg(paste0("API Error: ", input$scheme_error))
   })
 
   output$paletteTitleUI <- renderUI({
