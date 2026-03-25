@@ -32,5 +32,5 @@ jobs:
               token  = Sys.getenv('RSCONNECT_TOKEN'),
               secret = Sys.getenv('RSCONNECT_SECRET')
             )
-            rsconnect::deployApp(appDir = '.', appName = 'caj654.shinyapps.io/chroma')
+            rsconnect::deployApp(appDir = '.', appName = 'chroma')
           "
