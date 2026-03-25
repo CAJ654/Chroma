@@ -1,6 +1,6 @@
 # Color Palette Generator
 
-A fully R-centric Shiny app that generates color palettes using two server-side APIs — all HTTP calls are made from R, not the browser.
+A fully R-centric Shiny app that generates color palettes using two server-side APIs — all HTTP calls are made from R, not the browser
 
 ## Tech Stack
 
@@ -43,3 +43,5 @@ Workflow `Start application`:
 ```
 Rscript -e "shiny::runApp('app.R', host='0.0.0.0', port=5000)"
 ```
+
+Test Deployment 1# Chroma
