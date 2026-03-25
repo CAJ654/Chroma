@@ -439,7 +439,7 @@ ui <- fluidPage(
         .section-title { font-size: 15px; margin-bottom: 14px; }
       }
     ")))
-  ),
+  )
 
   div(class = "app-header",
     h1("Chroma"),
