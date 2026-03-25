@@ -7,7 +7,7 @@
   },
   "environment": {
     "platform": "x86_64-pc-linux-gnu",
-    "r_version": "4.5.1"
+    "r_version": "4.5.0"
   },
   "packages": {
     "shiny": { "Source": "CRAN", "Repository": "https://cran.rstudio.com", "Version": "1.8.0" },
